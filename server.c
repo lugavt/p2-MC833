@@ -231,6 +231,9 @@ void* handle_client(int server_socket, struct sockaddr_in server_address, struct
                 if (profile_found) {strcpy(buffer, "Perfil removido com sucesso!");} else {strcpy(buffer, "Erro: perfil não encontrado!");}
                 sendto(server_socket, buffer, 10000, 0, (struct sockaddr*)&client_address, sizeof(client_address));    
             }
+            else if(strcmp(action->valuestring, "seachImage") == 0){
+                printf("Solicitacao de imagem de perfil\n");                
+            }
 
             cJSON_Delete(jsonPayload);
 
@@ -263,23 +266,12 @@ int main() {
     }
 
 
+    printf("Servidor escutando\n");
 
     while(1){
-        printf("Servidor escutando\n");
-
-        //recebe mensagem 
-        // bzero(buffer, 10000);
-        // address_size = sizeof(client_address);
-        // recvfrom(server_socket, buffer, 10000, 0, (struct sockaddr*)&client_address, &address_size);
-        // printf("Mensagem recebida");
 
         handle_client(server_socket, server_address, client_address, address_size);
-        
-        // // envia mensagem
-        // bzero(buffer, 10000);
-        // strcpy(buffer, "recebido");
-        // sendto(server_socket, buffer, 10000, 0, (struct sockaddr*)&client_address, sizeof(client_address));
-        printf("...\n");
+
     }
 
     return 0;

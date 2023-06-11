@@ -94,6 +94,8 @@ int main() {
     printf("  _________\n /         \\\n |  /\\ /\\  |\n |    -    |\n |  \\___/  |\n \\_________/");
     printf("\n\nBEM VINDO!");
 
+
+while(1){    
     int opcao;
     // options of request
     printf("\n--------------------- MENU INICIAL --------------------------\n");
@@ -105,8 +107,10 @@ int main() {
     printf("5 - Coletar todos os perfis\n");
     printf("6 - Coletar informações de um perfil\n");
     printf("7 - Remover perfil\n");
+    printf("8 - Buscar imagem dado um email\n");
+    printf("9 - Desliga cliente\n");
 
-    printf("\nDigite a sua escolha (1-7): ");
+    printf("\nDigite a sua escolha (1-9): ");
     scanf("%d", &opcao);
 
     Payload payload;
@@ -180,7 +184,7 @@ int main() {
             read_size = recvfrom(client_socket, buffer, 10000, 0, (struct sockaddr*)&client_address, &client_address_size); // reading result
 
             if (read_size <= 0) {
-                break;
+                printf("Erro na mensagem recebida");
             }
 
             buffer[read_size] = '\0';
@@ -202,7 +206,7 @@ int main() {
             read_size = recvfrom(client_socket, buffer, 10000, 0, (struct sockaddr*)&client_address, &client_address_size); // reading result
 
             if (read_size <= 0) {
-                break;
+                printf("Erro na mensagem recebida");
             }
 
 
@@ -219,8 +223,7 @@ int main() {
 
             break;}
 
-        case 3: // search profiles by skill
-            
+        case 3: // search profiles by skill          
         {   strcpy(payload.action, "getAllProfilesBySkill");
 
             printf("\nDigite a habilidade selecionada: ");
@@ -236,7 +239,7 @@ int main() {
             read_size = recvfrom(client_socket, buffer, 10000, 0, (struct sockaddr*)&client_address, &client_address_size); // reading result
 
             if (read_size <= 0) {
-                break;
+                printf("Erro na mensagem recebida");
             }
 
             buffer[read_size] = '\0';
@@ -252,8 +255,7 @@ int main() {
 
             break;}
 
-        case 4: // seach profiles by year of graduation
-            
+        case 4: // seach profiles by year of graduation         
             {strcpy(payload.action, "getAllProfilesByYear");
 
             int year_value;
@@ -276,7 +278,7 @@ int main() {
             read_size = recvfrom(client_socket, buffer, 10000, 0, (struct sockaddr*)&client_address, &client_address_size); // reading result
 
             if (read_size <= 0) {
-                break;
+                printf("Erro na mensagem recebida");
             }
 
             buffer[read_size] = '\0';
@@ -292,8 +294,7 @@ int main() {
                             
             break;}
             
-        case 5: // get all profiles
-            
+        case 5: // get all profiles           
         {   strcpy(payload.action, "getAllProfiles");
             strcpy(payload.message, "");
 
@@ -308,7 +309,7 @@ int main() {
             read_size = recvfrom(client_socket, buffer, 10000, 0, (struct sockaddr*)&client_address, &client_address_size); // reading result
 
             if (read_size <= 0) {
-                break;
+                printf("Erro na mensagem recebida");
             }
 
             buffer[read_size] = '\0';
@@ -324,8 +325,7 @@ int main() {
 
             break;}
 
-        case 6: // get the profile of an email
-            
+        case 6: // get the profile of an email         
         {    strcpy(payload.action, "getProfile");
 
             printf("\nDigite o email do perfil desejado: ");
@@ -342,7 +342,7 @@ int main() {
             read_size = recvfrom(client_socket, buffer, 10000, 0, (struct sockaddr*)&client_address, &client_address_size); // reading result
 
             if (read_size <= 0) {
-                break;
+                printf("Erro na mensagem recebida");
             }
 
             buffer[read_size] = '\0';
@@ -356,9 +356,8 @@ int main() {
 
             printResponse(profiles_array, "all");
             break;}
-
-        case 7: // remove a profile
-            
+        
+        case 7: // remove a profile    
         {    strcpy(payload.action, "removeProfile");
 
             printf("\nDigite o email do perfil a ser removido: ");
@@ -375,17 +374,43 @@ int main() {
             read_size = recvfrom(client_socket, buffer, 10000, 0, (struct sockaddr*)&client_address, &client_address_size); // reading result
 
             if (read_size <= 0) {
-                break;
+                printf("Erro na mensagem recebida");
             }
 
             buffer[read_size] = '\0';
             printf("\n%s\n", buffer);
             break;}
+        case 8: // falta implementar tudo aqui
+        /*
+        A ideia aqui eh que toda vez que um cadastro foi realizado, a imagem teste.png eh copiada mudando o nome do arquivo para o nome do identificar (email),
+        todas vez que entrar no 8. olha nessa pasta pra ver se essa imagem existe e recebe ela (em diferente pacotes que compoem o total).
+        se remover o perfil, remove a imagem 
+        */
 
+        {
+            strcpy(payload.action, "seachImage");
+            printf("\nDigite o email do perfil para imagem: ");
+            scanf("%s", payload.message);
+
+            // SEND
+            sprintf(buffer, "{\"action\": \"%s\", \"message\":  \"%s\"}",
+            payload.action, payload.message);
+            sendto(client_socket, buffer, 10000, 0, (struct sockaddr*)&client_address, sizeof(client_address));
+
+            // RESPONSE - falta implementar
+            break;
+        }
+        case 9:
+                close(client_socket);
+                printf("\nVocê foi desconectado.\n");
+                printf("  _________\n /         \\\n |  /\\ /\\  |\n |    -    |\n |  \\___/  |\n \\_________/");
+                printf("\n\nVOLTE SEMPRE!\n");
+                return 1;
+        
         default: // non-existing option
             printf("\nOpção inválida.\n");
             break;
     }
-
+}
     return 0;
 }
