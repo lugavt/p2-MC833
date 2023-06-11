@@ -1,2 +1,2 @@
-# p1-MC833
-TCP implementation
+# p2-MC833
+UDP implementation

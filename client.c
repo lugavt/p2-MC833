@@ -61,7 +61,7 @@ void printResponse(cJSON *profiles_array, char* print_type){ // response dealer
 }
 
 int main() {
-
+    
     typedef struct { //struct containing profiles' info
         char email[50];
         char nome[50];
@@ -76,337 +76,316 @@ int main() {
         char action[50];
         char message[500];
     } Payload;
-
+    
     char *ip = "127.0.0.1"; // local address
-    int port = 5564; 
-
+    int port = 5555; 
+    
+    int client_socket = socket(AF_INET, SOCK_DGRAM, 0); // defining the client as a UDP socket with IPv4
     struct sockaddr_in client_address; 
-    int client_socket = socket(AF_INET, SOCK_STREAM, 0); // defining the client as a TCP socket with IPv4
-
-    if (client_socket < 0) { // verifies if there is an error in the socket's creation
-        perror("Erro ao criar socket do cliente");
-        exit(1);
-    }
-
-    struct sockaddr_in server_address; 
-    memset(&server_address, 0, sizeof(server_address));
-    server_address.sin_family = AF_INET;
-    server_address.sin_addr.s_addr = inet_addr(ip);
-    server_address.sin_port = port;
-
-    if (connect(client_socket, (struct sockaddr*)&server_address, sizeof(server_address)) < 0) { // connecting the client and the server
-        perror("Erro ao conectar ao servidor");
-        return 1;
-    }
-
     char buffer[10000];
-    bzero(buffer, 10000);
+    socklen_t client_address_size; 
+
+    memset(&client_address, 0, sizeof(client_address));
+    client_address.sin_family = AF_INET;
+    client_address.sin_addr.s_addr = inet_addr(ip);
+    client_address.sin_port = port;
+
     int read_size = 0;
     printf("  _________\n /         \\\n |  /\\ /\\  |\n |    -    |\n |  \\___/  |\n \\_________/");
     printf("\n\nBEM VINDO!");
 
-    while (1) { // loop of requests for the client
+    int opcao;
+    // options of request
+    printf("\n--------------------- MENU INICIAL --------------------------\n");
+    printf("\nEscolha uma opcao:\n");
+    printf("1 - Cadastro\n");
+    printf("2 - Coletar perfis através do curso\n");
+    printf("3 - Coletar perfis através das habilidades\n");
+    printf("4 - Coletar perfis através do ano de formação\n");
+    printf("5 - Coletar todos os perfis\n");
+    printf("6 - Coletar informações de um perfil\n");
+    printf("7 - Remover perfil\n");
 
-        int opcao;
-        // options of request
-        printf("\n--------------------- MENU INICIAL --------------------------\n");
-        printf("\nEscolha uma opcao:\n");
-        printf("1 - Cadastro\n");
-        printf("2 - Coletar perfis através do curso\n");
-        printf("3 - Coletar perfis através das habilidades\n");
-        printf("4 - Coletar perfis através do ano de formação\n");
-        printf("5 - Coletar todos os perfis\n");
-        printf("6 - Coletar informações de um perfil\n");
-        printf("7 - Remover perfil\n");
-        printf("8 - Desconectar e encerrar\n");
+    printf("\nDigite a sua escolha (1-7): ");
+    scanf("%d", &opcao);
 
-        printf("\nDigite a sua escolha (1-8): ");
-        scanf("%d", &opcao);
+    Payload payload;
+    cJSON *profiles_array; 
+    cJSON *jsonPayload;
+            
+    bzero(buffer, 10000);
 
-        Payload payload;
-        cJSON *profiles_array; 
-        cJSON *jsonPayload;
+    switch (opcao) {
+        case 1: // register a new profile
+        {
+            Profile profile;
+            strcpy(payload.action, "register");
 
-        switch(opcao) {
-            case 1: // register a new profile
-                Profile profile;
-                strcpy(payload.action, "register");
+            printf("\nPara realizar o cadastro precisaremos de algumas informações: \n");
 
-                printf("\nPara realizar o cadastro precisaremos de algumas informações: \n");
+            printf("Digite o seu email: ");
+            scanf("%s", profile.email);
 
-                printf("Digite o seu email: ");
-                scanf("%s", profile.email);
+            printf("Digite o seu nome: ");
+            scanf("%s", profile.nome);
 
-                printf("Digite o seu nome: ");
-                scanf("%s", profile.nome);
+            printf("Digite o seu sobrenome: ");
+            scanf("%s", profile.sobrenome);
 
-                printf("Digite o seu sobrenome: ");
-                scanf("%s", profile.sobrenome);
+            printf("Digite a sua cidade: ");
+            scanf("%s", profile.cidade);
 
-                printf("Digite a sua cidade: ");
-                scanf("%s", profile.cidade);
+            printf("Digite a sua formacao: ");
+            scanf("%s", profile.formacao);
 
-                printf("Digite a sua formacao: ");
-                scanf("%s", profile.formacao);
+            printf("Digite o ano de formatura: ");
+            scanf("%d", &profile.ano_formatura);
 
-                printf("Digite o ano de formatura: ");
-                scanf("%d", &profile.ano_formatura);
+            char input_message[1000];
+            printf("Digite as suas habilidades separados por vírgula: ");
+            scanf("%s", input_message);
+            
+            char *current_skill; // creating skills' array
+            char skills[1000] = "[";
 
-                char input_message[1000];
-                printf("Digite as suas habilidades separados por vírgula: ");
-                scanf("%s", input_message);
-                
-                char *current_skill; // creating skills' array
-                char skills[1000] = "[";
+            current_skill = strtok(input_message, ",");
+            int skill_counter = 0;
 
-                current_skill = strtok(input_message, ",");
-                int skill_counter = 0;
+            while (current_skill != NULL) { //
 
-                while (current_skill != NULL) { //
-
-                    if (skill_counter > 0){
-                        strcat(skills, ",");
-                    }
-                    strcat(skills, "\"");
-                    strcat(skills, current_skill);
-                    strcat(skills, "\"");
-
-                    current_skill = strtok(NULL, ",");
-                    skill_counter++;
+                if (skill_counter > 0){
+                    strcat(skills, ",");
                 }
+                strcat(skills, "\"");
+                strcat(skills, current_skill);
+                strcat(skills, "\"");
 
-                strcat(skills, "]");
-                strcpy(profile.habilidades, skills);
+                current_skill = strtok(NULL, ",");
+                skill_counter++;
+            }
 
-                sprintf(payload.message, "{\"email\": \"%s\", \"nome\": \"%s\", \"sobrenome\": \"%s\", \"cidade\": \"%s\", \"formacao\": \"%s\", \"ano_formatura\": %d, \"habilidades\": %s}",
-                profile.email, profile.nome, profile.sobrenome, profile.cidade, profile.formacao, profile.ano_formatura, profile.habilidades); // defining message structure
+            strcat(skills, "]");
+            strcpy(profile.habilidades, skills);
 
-                sprintf(buffer, "{\"action\": \"%s\", \"message\": %s}",
-                payload.action, payload.message);
-                send(client_socket, buffer, strlen(buffer),0); // sending message and action
+            sprintf(payload.message, "{\"email\": \"%s\", \"nome\": \"%s\", \"sobrenome\": \"%s\", \"cidade\": \"%s\", \"formacao\": \"%s\", \"ano_formatura\": %d, \"habilidades\": %s}",
+            profile.email, profile.nome, profile.sobrenome, profile.cidade, profile.formacao, profile.ano_formatura, profile.habilidades); // defining message structure
 
-                bzero(buffer, 10000);
-                read_size = recv(client_socket, buffer, sizeof(buffer),0); // receiving result
+            sprintf(buffer, "{\"action\": \"%s\", \"message\": %s}",
+            payload.action, payload.message);
 
-                if (read_size <= 0) {
-                    break;
-                }
+            sendto(client_socket, buffer, 10000, 0, (struct sockaddr*)&client_address, sizeof(client_address)); // sending profile
+        
+            bzero(buffer, 10000);
+            client_address_size = sizeof(client_address);
+            read_size = recvfrom(client_socket, buffer, 10000, 0, (struct sockaddr*)&client_address, &client_address_size); // reading result
 
-                buffer[read_size] = '\0';
-                printf("\n%s\n", buffer);
+            if (read_size <= 0) {
                 break;
+            }
 
-            case 2: // search profiles by course
-                
-                strcpy(payload.action, "getAllProfilesByCourse");
-                printf("\nDigite o curso selecionado: ");
-                scanf("%s", payload.message);
-                
-                // SEND
-                sprintf(buffer, "{\"action\": \"%s\", \"message\": \"%s\"}",
-                payload.action, payload.message);
-                send(client_socket, buffer, strlen(buffer),0);
-
-                // RESPONSE
-                bzero(buffer, 10000);
-                read_size = recv(client_socket, buffer, sizeof(buffer),0);
-
-                if (read_size <= 0) {
-                    break;
-                }
-
-
-                buffer[read_size] = '\0';
-                jsonPayload = cJSON_Parse(buffer);
-                if (jsonPayload == NULL) {
-                    printf("Erro ao fazer o parse do JSON.\n");
-                    break;
-                }
-
-                profiles_array = cJSON_GetObjectItem(jsonPayload, "profiles");
-
-                printResponse(profiles_array, "course");
-
-                break;
-
-            case 3: // search profiles by skill
-                
-                strcpy(payload.action, "getAllProfilesBySkill");
-
-                printf("\nDigite a habilidade selecionada: ");
-                scanf("%s", payload.message);
-                
-                // SEND
-                sprintf(buffer, "{\"action\": \"%s\", \"message\": \"%s\"}",
-                payload.action, payload.message);
-                send(client_socket, buffer, strlen(buffer),0);
-
-                // RESPONSE
-                bzero(buffer, 10000);
-                read_size = recv(client_socket, buffer, sizeof(buffer),0);
-
-                if (read_size <= 0) {
-                    break;
-                }
-
-                buffer[read_size] = '\0';
-                jsonPayload = cJSON_Parse(buffer);
-                if (jsonPayload == NULL) {
-                    printf("\nErro ao fazer o parse do JSON.\n");
-                    break;
-                }
-
-                profiles_array = cJSON_GetObjectItem(jsonPayload, "profiles");
-
-                printResponse(profiles_array, "skill");
-
-                break;
-
-            case 4: // seach profiles by year of graduation
-                
-                strcpy(payload.action, "getAllProfilesByYear");
-
-                int year_value;
-                printf("\nDigite o ano de formatura selecionado: ");
-
-                while (scanf("%d", &year_value) != 1) {
-                    printf("Entrada inválida -> digite o ano de formação (ex: 2023)");
-                    while (getchar() != '\n');
-                    printf("\nDigite o ano de formatura selecionado: ");
-                }
-                
-                // SEND
-                sprintf(buffer, "{\"action\": \"%s\", \"message\": %d}",
-                payload.action, year_value);
-                
-                send(client_socket, buffer, strlen(buffer),0);
-
-                // RESPONSE
-                bzero(buffer, 10000);
-                read_size = recv(client_socket, buffer, sizeof(buffer),0);
-
-                if (read_size <= 0) {
-                    break;
-                }
-
-                buffer[read_size] = '\0';
-                jsonPayload = cJSON_Parse(buffer);
-                if (jsonPayload == NULL) {
-                    printf("Erro ao fazer o parse do JSON.\n");
-                    break;
-                }
-
-                profiles_array = cJSON_GetObjectItem(jsonPayload, "profiles");
-
-                printResponse(profiles_array, "year");
-                               
-                break;
-
-            case 5: // get all profiles
-                
-                strcpy(payload.action, "getAllProfiles");
-                strcpy(payload.message, "");
-
-                // SEND
-                sprintf(buffer, "{\"action\": \"%s\", \"message\": \"%s\"}",
-                payload.action, payload.message);
-                
-                send(client_socket, buffer, strlen(buffer),0);
-
-                // RESPONSE
-                bzero(buffer, 10000);
-                read_size = recv(client_socket, buffer, sizeof(buffer),0);
-
-                if (read_size <= 0) {
-                    break;
-                }
-
-                buffer[read_size] = '\0';
-                jsonPayload = cJSON_Parse(buffer);
-                if (jsonPayload == NULL) {
-                    printf("Erro ao fazer o parse do JSON.\n");
-                    break;
-                }
-
-                profiles_array = cJSON_GetObjectItem(jsonPayload, "profiles");
-
-                printResponse(profiles_array, "all");
-
-                break;
-
-            case 6: // get the profile of an email
-                
-                strcpy(payload.action, "getProfile");
-
-                printf("\nDigite o email do perfil desejado: ");
-                scanf("%s", payload.message);
-                
-                // SEND
-                sprintf(buffer, "{\"action\": \"%s\", \"message\":  \"%s\"}",
-                payload.action, payload.message);
-                
-                send(client_socket, buffer, strlen(buffer),0);
-
-                // RESPONSE
-                bzero(buffer, 10000);
-                read_size = recv(client_socket, buffer, sizeof(buffer),0);
-
-                if (read_size <= 0) {
-                    break;
-                }
-
-                buffer[read_size] = '\0';
-                jsonPayload = cJSON_Parse(buffer);
-                if (jsonPayload == NULL) {
-                    printf("Erro ao fazer o parse do JSON.\n");
-                    break;
-                }
-
-                profiles_array = cJSON_GetObjectItem(jsonPayload, "profiles");
-
-                printResponse(profiles_array, "all");
-                break;
-
-            case 7: // remove a profile
-                
-                strcpy(payload.action, "removeProfile");
-
-                printf("\nDigite o email do perfil a ser removido: ");
-                scanf("%s", payload.message);
-                
-                // SEND
-                sprintf(buffer, "{\"action\": \"%s\", \"message\":  \"%s\"}",
-                payload.action, payload.message);
-                
-                send(client_socket, buffer, strlen(buffer),0);
-
-                // RESPONSE
-                bzero(buffer, 10000);
-                read_size = recv(client_socket, buffer, sizeof(buffer),0);
-
-                if (read_size <= 0) {
-                    break;
-                }
-
-                buffer[read_size] = '\0';
-                printf("\n%s\n", buffer);
-                break;
-
-            case 8: // exit program and close connection
-
-                close(client_socket);
-                printf("\nVocê foi desconectado.\n");
-                printf("  _________\n /         \\\n |  /\\ /\\  |\n |    -    |\n |  \\___/  |\n \\_________/");
-                printf("\n\nVOLTE SEMPRE!\n");
-                return 1;
-
-            default: // non-existing option
-                printf("\nOpção inválida.\n");
-                break;
+            buffer[read_size] = '\0';
+            printf("\n%s\n", buffer);
+            break;
         }
- }
+        case 2: // search profiles by course
+        {   strcpy(payload.action, "getAllProfilesByCourse");
+            printf("\nDigite o curso selecionado: ");
+            scanf("%s", payload.message);
+            
+            // SEND
+            sprintf(buffer, "{\"action\": \"%s\", \"message\": \"%s\"}",
+            payload.action, payload.message);
+            sendto(client_socket, buffer, 10000, 0, (struct sockaddr*)&client_address, sizeof(client_address));
 
-    close(client_socket);
+            // RESPONSE
+            bzero(buffer, 10000);
+            read_size = recvfrom(client_socket, buffer, 10000, 0, (struct sockaddr*)&client_address, &client_address_size); // reading result
+
+            if (read_size <= 0) {
+                break;
+            }
+
+
+            buffer[read_size] = '\0';
+            jsonPayload = cJSON_Parse(buffer);
+            if (jsonPayload == NULL) {
+                printf("Erro ao fazer o parse do JSON.\n");
+                break;
+            }
+
+            profiles_array = cJSON_GetObjectItem(jsonPayload, "profiles");
+
+            printResponse(profiles_array, "course");
+
+            break;}
+
+        case 3: // search profiles by skill
+            
+        {   strcpy(payload.action, "getAllProfilesBySkill");
+
+            printf("\nDigite a habilidade selecionada: ");
+            scanf("%s", payload.message);
+            
+            // SEND
+            sprintf(buffer, "{\"action\": \"%s\", \"message\": \"%s\"}",
+            payload.action, payload.message);
+            sendto(client_socket, buffer, 10000, 0, (struct sockaddr*)&client_address, sizeof(client_address));;
+
+            // RESPONSE
+            bzero(buffer, 10000);
+            read_size = recvfrom(client_socket, buffer, 10000, 0, (struct sockaddr*)&client_address, &client_address_size); // reading result
+
+            if (read_size <= 0) {
+                break;
+            }
+
+            buffer[read_size] = '\0';
+            jsonPayload = cJSON_Parse(buffer);
+            if (jsonPayload == NULL) {
+                printf("\nErro ao fazer o parse do JSON.\n");
+                break;
+            }
+
+            profiles_array = cJSON_GetObjectItem(jsonPayload, "profiles");
+
+            printResponse(profiles_array, "skill");
+
+            break;}
+
+        case 4: // seach profiles by year of graduation
+            
+            {strcpy(payload.action, "getAllProfilesByYear");
+
+            int year_value;
+            printf("\nDigite o ano de formatura selecionado: ");
+
+            while (scanf("%d", &year_value) != 1) {
+                printf("Entrada inválida -> digite o ano de formação (ex: 2023)");
+                while (getchar() != '\n');
+                printf("\nDigite o ano de formatura selecionado: ");
+            }
+            
+            // SEND
+            sprintf(buffer, "{\"action\": \"%s\", \"message\": %d}",
+            payload.action, year_value);
+            
+            sendto(client_socket, buffer, 10000, 0, (struct sockaddr*)&client_address, sizeof(client_address));
+
+            // RESPONSE
+            bzero(buffer, 10000);
+            read_size = recvfrom(client_socket, buffer, 10000, 0, (struct sockaddr*)&client_address, &client_address_size); // reading result
+
+            if (read_size <= 0) {
+                break;
+            }
+
+            buffer[read_size] = '\0';
+            jsonPayload = cJSON_Parse(buffer);
+            if (jsonPayload == NULL) {
+                printf("Erro ao fazer o parse do JSON.\n");
+                break;
+            }
+
+            profiles_array = cJSON_GetObjectItem(jsonPayload, "profiles");
+
+            printResponse(profiles_array, "year");
+                            
+            break;}
+            
+        case 5: // get all profiles
+            
+        {   strcpy(payload.action, "getAllProfiles");
+            strcpy(payload.message, "");
+
+            // SEND
+            sprintf(buffer, "{\"action\": \"%s\", \"message\": \"%s\"}",
+            payload.action, payload.message);
+            
+            sendto(client_socket, buffer, 10000, 0, (struct sockaddr*)&client_address, sizeof(client_address));
+
+            // RESPONSE
+            bzero(buffer, 10000);
+            read_size = recvfrom(client_socket, buffer, 10000, 0, (struct sockaddr*)&client_address, &client_address_size); // reading result
+
+            if (read_size <= 0) {
+                break;
+            }
+
+            buffer[read_size] = '\0';
+            jsonPayload = cJSON_Parse(buffer);
+            if (jsonPayload == NULL) {
+                printf("Erro ao fazer o parse do JSON.\n");
+                break;
+            }
+
+            profiles_array = cJSON_GetObjectItem(jsonPayload, "profiles");
+
+            printResponse(profiles_array, "all");
+
+            break;}
+
+        case 6: // get the profile of an email
+            
+        {    strcpy(payload.action, "getProfile");
+
+            printf("\nDigite o email do perfil desejado: ");
+            scanf("%s", payload.message);
+            
+            // SEND
+            sprintf(buffer, "{\"action\": \"%s\", \"message\":  \"%s\"}",
+            payload.action, payload.message);
+            
+            sendto(client_socket, buffer, 10000, 0, (struct sockaddr*)&client_address, sizeof(client_address));
+
+            // RESPONSE
+            bzero(buffer, 10000);
+            read_size = recvfrom(client_socket, buffer, 10000, 0, (struct sockaddr*)&client_address, &client_address_size); // reading result
+
+            if (read_size <= 0) {
+                break;
+            }
+
+            buffer[read_size] = '\0';
+            jsonPayload = cJSON_Parse(buffer);
+            if (jsonPayload == NULL) {
+                printf("Erro ao fazer o parse do JSON.\n");
+                break;
+            }
+
+            profiles_array = cJSON_GetObjectItem(jsonPayload, "profiles");
+
+            printResponse(profiles_array, "all");
+            break;}
+
+        case 7: // remove a profile
+            
+        {    strcpy(payload.action, "removeProfile");
+
+            printf("\nDigite o email do perfil a ser removido: ");
+            scanf("%s", payload.message);
+            
+            // SEND
+            sprintf(buffer, "{\"action\": \"%s\", \"message\":  \"%s\"}",
+            payload.action, payload.message);
+            
+            sendto(client_socket, buffer, 10000, 0, (struct sockaddr*)&client_address, sizeof(client_address));
+
+            // RESPONSE
+            bzero(buffer, 10000);
+            read_size = recvfrom(client_socket, buffer, 10000, 0, (struct sockaddr*)&client_address, &client_address_size); // reading result
+
+            if (read_size <= 0) {
+                break;
+            }
+
+            buffer[read_size] = '\0';
+            printf("\n%s\n", buffer);
+            break;}
+
+        default: // non-existing option
+            printf("\nOpção inválida.\n");
+            break;
+    }
 
     return 0;
 }

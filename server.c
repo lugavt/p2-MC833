@@ -7,16 +7,15 @@
 #include "cJSON.h"
 #include <stdbool.h>
 
-void* handle_client(void* arg) { // worker to handle client request
-    int client_socket = *(int*)arg; // get client socket
+void* handle_client(int server_socket, struct sockaddr_in server_address, struct sockaddr_in client_address, socklen_t address_size) { // worker to handle client request
 
     int read_size;    
     char buffer[10000];
-    while (1) {
-        
-        bzero(buffer, 10000); // clear buffer
-        read_size = recv(client_socket, buffer, sizeof(buffer),0); // read request message
-        
+    while (1) {      
+
+        bzero(buffer, 10000);
+        address_size = sizeof(client_address);
+        read_size = recvfrom(server_socket, buffer, 10000, 0, (struct sockaddr*)&client_address, &address_size);
         if (read_size > 0){
             buffer[read_size] = '\0';
             cJSON *jsonPayload = cJSON_Parse(buffer); // parse message to get a JSON object
@@ -43,6 +42,7 @@ void* handle_client(void* arg) { // worker to handle client request
 
             // server actions
             if (strcmp(action->valuestring, "register") == 0){
+                printf("Solicitacao de cadastro\n");
 
                 int existeId = 0;
                 cJSON *inputEmail = cJSON_GetObjectItem(message, "email");
@@ -63,17 +63,17 @@ void* handle_client(void* arg) { // worker to handle client request
                     fclose(fp);
                     bzero(buffer, 10000);
                     strcpy(buffer, "Usuário cadastrado com sucesso.\n");
-                    send(client_socket, buffer, strlen(buffer), 0);
+                    sendto(server_socket, buffer, 10000, 0, (struct sockaddr*)&client_address, sizeof(client_address));
                 }
                 else{
                     // error response -> email already in our database
                     bzero(buffer, 10000);
                     strcpy(buffer, "Falha ao cadastrar usuário. Email em uso.\n");
-                    send(client_socket, buffer, strlen(buffer), 0);
+                    sendto(server_socket, buffer, 10000, 0, (struct sockaddr*)&client_address, sizeof(client_address));
                 }
             }
             else if (strcmp(action->valuestring, "getAllProfilesByCourse") == 0){
-
+                printf("Solicitacao de busca por curso\n");
                 // response in JSON format {"profiles": []}
                 char payload[10000];
                 char profileJson[200];
@@ -99,9 +99,10 @@ void* handle_client(void* arg) { // worker to handle client request
                 strcat(payload, "]}");
                 bzero(buffer, 10000);
                 sprintf(buffer, payload);
-                send(client_socket, buffer, strlen(buffer), 0);
+                sendto(server_socket, buffer, 10000, 0, (struct sockaddr*)&client_address, sizeof(client_address));
             }
             else if (strcmp(action->valuestring, "getAllProfilesBySkill") == 0){
+                printf("Solicitacao de busca por habilidade\n");
                 // response in JSON format {"profiles": []}
 
                 char payload[10000];
@@ -134,9 +135,10 @@ void* handle_client(void* arg) { // worker to handle client request
                 strcat(payload, "]}");
                 bzero(buffer, 10000);
                 sprintf(buffer, payload);
-                send(client_socket, buffer, strlen(buffer), 0);
+                sendto(server_socket, buffer, 10000, 0, (struct sockaddr*)&client_address, sizeof(client_address));
             }
             else if (strcmp(action->valuestring, "getAllProfilesByYear") == 0){
+                printf("Solicitacao de busca por ano de formacao\n");
                 // response in JSON format {"profiles": []}
 
                 char payload[10000];
@@ -164,20 +166,20 @@ void* handle_client(void* arg) { // worker to handle client request
                 strcat(payload, "]}");
                 bzero(buffer, 10000);
                 sprintf(buffer, payload);
-                send(client_socket, buffer, strlen(buffer), 0);
+                sendto(server_socket, buffer, 10000, 0, (struct sockaddr*)&client_address, sizeof(client_address));
             }
-
             else if (strcmp(action->valuestring, "getAllProfiles") == 0){
+                printf("Solicitacao de todos os perfis\n");
                 // return the entire data file
 
                 bzero(buffer, 10000);
                 char *json_str = cJSON_PrintUnformatted(data_json);
                 strcpy(buffer, json_str);
-                send(client_socket, buffer, strlen(buffer), 0);
+                sendto(server_socket, buffer, 10000, 0, (struct sockaddr*)&client_address, sizeof(client_address));
                 free(json_str);
             }
-
             else if (strcmp(action->valuestring, "getProfile") == 0){
+                printf("Solicitacao de busca de perfil\n");
                 // response in JSON format {"profiles": []}
 
                 char payload[10000];
@@ -198,11 +200,11 @@ void* handle_client(void* arg) { // worker to handle client request
                 strcat(payload, "]}");
                 bzero(buffer, 10000);
                 strcpy(buffer, payload);
-                send(client_socket, buffer, strlen(buffer), 0);
+                sendto(server_socket, buffer, 10000, 0, (struct sockaddr*)&client_address, sizeof(client_address));
 
             }
             else if (strcmp(action->valuestring, "removeProfile") == 0){
-
+                printf("Solicitacao de remocao de perfil\n");
                 bool profile_found = false;
 
                 for(int i = 0; i < num_profiles; i++){
@@ -227,7 +229,7 @@ void* handle_client(void* arg) { // worker to handle client request
 
                 // RESPONSE
                 if (profile_found) {strcpy(buffer, "Perfil removido com sucesso!");} else {strcpy(buffer, "Erro: perfil não encontrado!");}
-                send(client_socket, buffer, strlen(buffer), 0);    
+                sendto(server_socket, buffer, 10000, 0, (struct sockaddr*)&client_address, sizeof(client_address));    
             }
 
             cJSON_Delete(jsonPayload);
@@ -236,13 +238,11 @@ void* handle_client(void* arg) { // worker to handle client request
         }
     }
 
-
 int main() {
 
     char *ip = "127.0.0.1";
-    int port = 5564;
-    socklen_t addr_size;
-
+    int port = 5555;
+    socklen_t address_size;
     int server_socket = socket(AF_INET, SOCK_DGRAM, 0); //IPv4, UDP
     if (server_socket < 0) { // error handler
         perror("Erro ao criar socket do servidor");
@@ -255,27 +255,32 @@ int main() {
     server_address.sin_addr.s_addr = inet_addr(ip);
     server_address.sin_port = port;
 
+
     // bind socket and address settings
     if (bind(server_socket, (struct sockaddr*)&server_address, sizeof(server_address)) < 0) {
         perror("Bind error");
         exit(1);
     }
 
-    // start listening
-    listen(server_socket, 10);
 
-    printf("Servidor escutando\n");
-    int client_socket;
 
-    // waiting for client requests
-    while (1) {
-        client_socket = recvfrom(server_socket, NULL, NULL); // accept client attempt to connect
-        printf("Cliente conectado\n");
-        handle_client((void*)&client_socket);
+    while(1){
+        printf("Servidor escutando\n");
+
+        //recebe mensagem 
+        // bzero(buffer, 10000);
+        // address_size = sizeof(client_address);
+        // recvfrom(server_socket, buffer, 10000, 0, (struct sockaddr*)&client_address, &address_size);
+        // printf("Mensagem recebida");
+
+        handle_client(server_socket, server_address, client_address, address_size);
+        
+        // // envia mensagem
+        // bzero(buffer, 10000);
+        // strcpy(buffer, "recebido");
+        // sendto(server_socket, buffer, 10000, 0, (struct sockaddr*)&client_address, sizeof(client_address));
+        printf("...\n");
     }
-    
-    close(client_socket); // close client connection
-    printf("Cliente desconectado\n");
 
     return 0;
 }
