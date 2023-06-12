@@ -408,6 +408,62 @@ while(1){
             sendto(client_socket, buffer, 10000, 0, (struct sockaddr*)&client_address, sizeof(client_address));
 
             // RESPONSE - falta implementar
+            char* profileImagePath = "./imagens-client/";
+            strcat(profileImagePath, payload.message);
+            strcat(profileImagePath, ".jpg")
+
+            FILE* file = fopen(profileImagePath, "wb");
+            if (file == NULL) {
+                printf("Falha ao criar o arquivo de imagem: %s\n", profileImagePath);
+                break;
+            }
+
+            unsigned char buffer[10000];
+            int bytesRead;
+            int totalReceived = 0;
+
+            while (1) {
+                ssize_t receivedBytes = recvfrom(sockfd, buffer, sizeof(buffer), 0, NULL, NULL);
+
+                if (receivedBytes < 0) {
+                    printf("Falha ao receber dados da imagem\n");
+                    fclose(file);
+                    break;
+                }
+
+                if (receivedBytes == sizeof("Falha ao abrir o arquivo de imagem\n") && strncmp(buffer, "Falha ao abrir o arquivo de imagem\n", sizeof("Falha ao abrir o arquivo de imagem\n")) == 0) {
+                    printf("Erro no servidor: Falha ao abrir o arquivo de imagem\n");
+                    fclose(file);
+                    break;
+                }
+                if (receivedBytes == sizeof("Falha ao enviar os dados da imagem\n") && strncmp(buffer, "Falha ao enviar os dados da imagem\n", sizeof("Falha ao enviar os dados da imagem\n")) == 0) {
+                    printf("Erro no servidor: Falha ao enviar os dados da imagem\n");
+                    fclose(file);
+                    break;
+                }
+                if (receivedBytes == sizeof("Erro ao gerar imagem de perfil\n") && strncmp(buffer, "Erro ao gerar imagem de perfil\n", sizeof("Erro ao gerar imagem de perfil\n")) == 0) {
+                    printf("Erro no servidor: Erro ao gerar imagem de perfil\n");
+                    fclose(file);
+                    break;
+                }
+
+                if (receivedBytes == 0) {
+                    printf("Imagem recebida com sucesso!\nArquivo está localizado no seguinte caminho: %s\n", profileImagePath);
+                    break;  // End of transmission
+                }
+
+                size_t writtenBytes = fwrite(buffer, 1, receivedBytes, file);
+                if (writtenBytes < receivedBytes) {
+                    printf("Falha ao escrever os dados no arquivo da imagem\n");
+                    fclose(file);
+                    break;
+                }
+
+                totalReceived += receivedBytes;
+            }
+
+            fclose(file);
+
             break;
         }
         case 9:

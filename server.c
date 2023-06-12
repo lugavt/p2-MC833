@@ -232,14 +232,106 @@ void* handle_client(int server_socket, struct sockaddr_in server_address, struct
                 sendto(server_socket, buffer, 10000, 0, (struct sockaddr*)&client_address, sizeof(client_address));    
             }
             else if(strcmp(action->valuestring, "seachImage") == 0){
-                printf("Solicitacao de imagem de perfil\n");                
-            }
+                
+                printf("Solicitacao de imagem de perfil\n");
 
+                int existeId = 0;
+                cJSON *inputEmail = cJSON_GetObjectItem(message, "email");
+
+                for(int i = 0; i < num_profiles; i++){ 
+                    cJSON *profile = cJSON_GetArrayItem(profiles_array, i);
+                    cJSON *email = cJSON_GetObjectItem(profile, "email");
+                    if (strcmp(email->valuestring, inputEmail->valuestring) == 0){ // verify if email is already in our database
+                        existeId = 1;
+                        break;  
+                    } 
+                }
+                if (existeId == 0){
+                    rintf("Email não encontrado\n");
+                    strcpy(buffer, "Email não encontrado\n");
+                    sendto(server_socket, buffer, 10000, 0, (struct sockaddr*)&client_address, sizeof(client_address)); 
+                    break;
+                }
+
+                char* sourceImagePath = "./imagens-server/teste.jpg";
+                char* profileImagePath = "./imagens-server/";
+                strcat(profileImagePath, message->valuestring);
+                strcat(profileImagePath, ".jpg")
+
+                char* errorMessage = copyAndRenameImage(sourceImagePath, destinationImagePath);
+                if (errorMessage != NULL) {
+                    printf("Erro ao copiar imagem: %s\n", errorMessage);
+                    strcpy(buffer, "Erro ao gerar imagem de perfil\n");
+                    sendto(server_socket, buffer, 10000, 0, (struct sockaddr*)&client_address, sizeof(client_address)); 
+                    break;
+                }
+
+                FILE* file = fopen(profileImagePath, "rb");
+                if (file == NULL) {
+                    printf("Falha ao abrir o arquivo de imagem: %s\n", profileImagePath);
+                    strcpy(buffer, "Falha ao abrir o arquivo de imagem\n");
+                    sendto(server_socket, buffer, 10000, 0, (struct sockaddr*)&client_address, sizeof(client_address));
+                    break;
+                }
+
+                unsigned char buffer[10000];
+                size_t bytesRead;
+                int totalSent = 0;
+
+                while ((bytesRead = fread(buffer, 1, sizeof(buffer), file)) > 0) {
+                    ssize_t sentBytes = sendto(sockfd, buffer, bytesRead, 0, (struct sockaddr*)&serverAddr, sizeof(serverAddr));
+                    if (sentBytes < 0) {
+                        printf("Falha ao enviar os dados da imagem\n");
+                        strcpy(buffer, "Falha ao enviar os dados da imagem\n");
+                        sendto(server_socket, buffer, 10000, 0, (struct sockaddr*)&client_address, sizeof(client_address));
+                        fclose(file);
+                        break;
+                    }
+
+                    totalSent += sentBytes;
+                }
+
+                fclose(file);
+
+            }
             cJSON_Delete(jsonPayload);
-
-            }
         }
     }
+
+
+char* copyAndRenameImage(const char* sourcePath, const char* destinationPath) {
+
+    FILE* sourceFile = fopen(sourcePath, "rb");
+    if (sourceFile == NULL) {
+        char* errorMessage = "Falha ao abrir imagem de teste\n";
+        return errorMessage;
+    }
+
+    FILE* destinationFile = fopen(destinationPath, "wb");
+    if (destinationFile == NULL) {
+        char* errorMessage = "Falha no caminho do arquivo de destino\n";
+        fclose(sourceFile);
+        return errorMessage;
+    }
+
+    unsigned char buffer[4096];
+    size_t bytesRead;
+
+    while ((bytesRead = fread(buffer, 1, sizeof(buffer), sourceFile)) > 0) {
+        size_t bytesWritten = fwrite(buffer, 1, bytesRead, destinationFile);
+        if (bytesWritten < bytesRead) {
+            char* errorMessage = "Falha ao copiar imagem\n";
+            fclose(sourceFile);
+            fclose(destinationFile);
+            return errorMessage;
+        }
+    }
+
+    fclose(sourceFile);
+    fclose(destinationFile);
+
+    return NULL;
+}
 
 int main() {
 
