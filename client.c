@@ -126,28 +126,38 @@ while(1){
             strcpy(payload.action, "register");
 
             printf("\nPara realizar o cadastro precisaremos de algumas informações: \n");
+            
+            getchar();
 
             printf("Digite o seu email: ");
-            scanf("%s", profile.email);
+            //    scanf("%s", profile.email);
+            fgets(profile.email, sizeof(profile.email), stdin);
 
             printf("Digite o seu nome: ");
-            scanf("%s", profile.nome);
+            fgets(profile.nome, sizeof(profile.nome), stdin);
+            // scanf("%s", profile.nome);
 
             printf("Digite o seu sobrenome: ");
-            scanf("%s", profile.sobrenome);
+            fgets(profile.sobrenome, sizeof(profile.sobrenome), stdin);
+            // scanf("%s", profile.sobrenome);
 
             printf("Digite a sua cidade: ");
-            scanf("%s", profile.cidade);
+            fgets(profile.cidade, sizeof(profile.cidade), stdin);
+            // scanf("%s", profile.cidade);
 
             printf("Digite a sua formacao: ");
-            scanf("%s", profile.formacao);
+            fgets(profile.formacao, sizeof(profile.formacao), stdin);
+            // scanf("%s", profile.formacao);
 
             printf("Digite o ano de formatura: ");
             scanf("%d", &profile.ano_formatura);
 
+            getchar();
+
             char input_message[1000];
             printf("Digite as suas habilidades separados por vírgula: ");
-            scanf("%s", input_message);
+            fgets(input_message, sizeof(input_message), stdin);
+            // scanf("%s", input_message);
             
             char *current_skill; // creating skills' array
             char skills[1000] = "[";
