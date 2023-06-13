@@ -132,22 +132,30 @@ while(1){
             printf("Digite o seu email: ");
             //    scanf("%s", profile.email);
             fgets(profile.email, sizeof(profile.email), stdin);
+            
+            size_t length = strlen(profile.email);
+            if (length > 0 && profile.email[length - 1] == '\n') profile.email[length - 1] = '\0';  // Substitui o '\n' por '\0'
 
             printf("Digite o seu nome: ");
             fgets(profile.nome, sizeof(profile.nome), stdin);
-            // scanf("%s", profile.nome);
+            length = strlen(profile.nome);
+            if (length > 0 && profile.nome[length - 1] == '\n') profile.nome[length - 1] = '\0';  // Substitui o '\n' por '\0'
 
             printf("Digite o seu sobrenome: ");
             fgets(profile.sobrenome, sizeof(profile.sobrenome), stdin);
             // scanf("%s", profile.sobrenome);
+            length = strlen(profile.sobrenome);
+            if (length > 0 && profile.sobrenome[length - 1] == '\n') profile.sobrenome[length - 1] = '\0';  // Substitui o '\n' por '\0'
 
             printf("Digite a sua cidade: ");
             fgets(profile.cidade, sizeof(profile.cidade), stdin);
-            // scanf("%s", profile.cidade);
+            length = strlen(profile.cidade);
+            if (length > 0 && profile.cidade[length - 1] == '\n') profile.cidade[length - 1] = '\0';  // Substitui o '\n' por '\0'
 
             printf("Digite a sua formacao: ");
             fgets(profile.formacao, sizeof(profile.formacao), stdin);
-            // scanf("%s", profile.formacao);
+            length = strlen(profile.formacao);
+            if (length > 0 && profile.formacao[length - 1] == '\n') profile.formacao[length - 1] = '\0';  // Substitui o '\n' por '\0'
 
             printf("Digite o ano de formatura: ");
             scanf("%d", &profile.ano_formatura);
@@ -157,7 +165,8 @@ while(1){
             char input_message[1000];
             printf("Digite as suas habilidades separados por vírgula: ");
             fgets(input_message, sizeof(input_message), stdin);
-            // scanf("%s", input_message);
+            length = strlen(input_message);
+            if (length > 0 && input_message[length - 1] == '\n') input_message[length - 1] = '\0';  // Substitui o '\n' por '\0'
             
             char *current_skill; // creating skills' array
             char skills[1000] = "[";
@@ -336,7 +345,8 @@ while(1){
             break;}
 
         case 6: // get the profile of an email         
-        {    strcpy(payload.action, "getProfile");
+        {   
+            strcpy(payload.action, "getProfile");
 
             printf("\nDigite o email do perfil desejado: ");
             scanf("%s", payload.message);
@@ -390,13 +400,7 @@ while(1){
             buffer[read_size] = '\0';
             printf("\n%s\n", buffer);
             break;}
-        case 8: // falta implementar tudo aqui
-        /*
-        A ideia aqui eh que toda vez que um cadastro foi realizado, a imagem teste.png eh copiada mudando o nome do arquivo para o nome do identificar (email),
-        todas vez que entrar no 8. olha nessa pasta pra ver se essa imagem existe e recebe ela (em diferente pacotes que compoem o total).
-        se remover o perfil, remove a imagem 
-        */
-
+        case 8: // search an image
         {
             strcpy(payload.action, "seachImage");
             printf("\nDigite o email do perfil para imagem: ");
@@ -407,62 +411,69 @@ while(1){
             payload.action, payload.message);
             sendto(client_socket, buffer, 10000, 0, (struct sockaddr*)&client_address, sizeof(client_address));
 
-            // RESPONSE - falta implementar
-            char* profileImagePath = "./imagens-client/";
+            // RESPONSE
+            char profileImagePath[100] = "./imagens-client/";
             strcat(profileImagePath, payload.message);
-            strcat(profileImagePath, ".jpg")
+            strcat(profileImagePath, ".jpg");
 
-            FILE* file = fopen(profileImagePath, "wb");
-            if (file == NULL) {
-                printf("Falha ao criar o arquivo de imagem: %s\n", profileImagePath);
-                break;
-            }
-
-            unsigned char buffer[10000];
             int bytesRead;
             int totalReceived = 0;
+            int imagemCriada = 0;
+
+            FILE* file;
 
             while (1) {
-                ssize_t receivedBytes = recvfrom(sockfd, buffer, sizeof(buffer), 0, NULL, NULL);
+                bzero(buffer,10000);
+                ssize_t receivedBytes = recvfrom(client_socket, buffer, 10000, 0, (struct sockaddr*)&client_address, &client_address_size);
 
-                if (receivedBytes < 0) {
-                    printf("Falha ao receber dados da imagem\n");
-                    fclose(file);
-                    break;
-                }
-
-                if (receivedBytes == sizeof("Falha ao abrir o arquivo de imagem\n") && strncmp(buffer, "Falha ao abrir o arquivo de imagem\n", sizeof("Falha ao abrir o arquivo de imagem\n")) == 0) {
-                    printf("Erro no servidor: Falha ao abrir o arquivo de imagem\n");
-                    fclose(file);
-                    break;
-                }
-                if (receivedBytes == sizeof("Falha ao enviar os dados da imagem\n") && strncmp(buffer, "Falha ao enviar os dados da imagem\n", sizeof("Falha ao enviar os dados da imagem\n")) == 0) {
-                    printf("Erro no servidor: Falha ao enviar os dados da imagem\n");
-                    fclose(file);
-                    break;
-                }
-                if (receivedBytes == sizeof("Erro ao gerar imagem de perfil\n") && strncmp(buffer, "Erro ao gerar imagem de perfil\n", sizeof("Erro ao gerar imagem de perfil\n")) == 0) {
-                    printf("Erro no servidor: Erro ao gerar imagem de perfil\n");
-                    fclose(file);
+                if (strncmp(buffer, "Email não encontrado\n", sizeof("Email não encontrado\n")) == 0) {
+                    printf("Email não encontrado\n");
                     break;
                 }
 
-                if (receivedBytes == 0) {
+                else if (strncmp(buffer, "finished", sizeof("finished")) == 0) {
                     printf("Imagem recebida com sucesso!\nArquivo está localizado no seguinte caminho: %s\n", profileImagePath);
-                    break;  // End of transmission
+                    break;
+                }
+
+                else if (receivedBytes < 0) {
+                    printf("Falha ao receber dados da imagem\n");
+                    break;
+                }
+
+                else if (strncmp(buffer, "Falha ao abrir o arquivo de imagem\n", sizeof("Falha ao abrir o arquivo de imagem\n")) == 0) {
+                    printf("Erro no servidor: Falha ao abrir o arquivo de imagem\n");
+                    break;
+                }
+                else if (strncmp(buffer, "Falha ao enviar os dados da imagem\n", sizeof("Falha ao enviar os dados da imagem\n")) == 0) {
+                    printf("Erro no servidor: Falha ao enviar os dados da imagem\n");
+                    break;
+                }
+                else if (strncmp(buffer, "Erro ao gerar imagem de perfil\n", sizeof("Erro ao gerar imagem de perfil\n")) == 0) {
+                    printf("Erro no servidor: Erro ao gerar imagem de perfil\n");
+                    break;
+                }
+                else{
+                    if(imagemCriada == 0){
+                        imagemCriada = 1;
+                        file = fopen(profileImagePath, "wb");
+                        if (file == NULL) {
+                            printf("Falha ao criar o arquivo de imagem: %s\n", profileImagePath);
+                            break;
+                        }           
+                    }
                 }
 
                 size_t writtenBytes = fwrite(buffer, 1, receivedBytes, file);
                 if (writtenBytes < receivedBytes) {
                     printf("Falha ao escrever os dados no arquivo da imagem\n");
-                    fclose(file);
                     break;
                 }
 
                 totalReceived += receivedBytes;
             }
 
-            fclose(file);
+            if(imagemCriada == 1)  fclose(file);
 
             break;
         }
