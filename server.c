@@ -7,40 +7,6 @@
 #include "cJSON.h"
 #include <stdbool.h>
 
-char* copyAndRenameImage(const char* sourcePath, const char* destinationPath) {
-    
-    unsigned char buffer[10000];
-    FILE* sourceFile = fopen(sourcePath, "rb");
-
-    if (sourceFile == NULL) {
-        char* errorMessage = "Falha ao abrir imagem de teste\n";
-        return errorMessage;
-    }
-
-    FILE* destinationFile = fopen(destinationPath, "wb");
-    if (destinationFile == NULL) {
-        char* errorMessage = "Falha no caminho do arquivo de destino\n";
-        fclose(sourceFile);
-        return errorMessage;
-    }
-
-    size_t bytesRead;
-
-    while ((bytesRead = fread(buffer, 1, sizeof(buffer), sourceFile)) > 0) {
-        size_t bytesWritten = fwrite(buffer, 1, bytesRead, destinationFile);
-        if (bytesWritten < bytesRead) {
-            char* errorMessage = "Falha ao copiar imagem\n";
-            fclose(sourceFile);
-            fclose(destinationFile);
-            return errorMessage;
-        }
-    }
-
-    fclose(sourceFile);
-    fclose(destinationFile);
-
-    return NULL;
-}
 
 void* handle_client(int server_socket, struct sockaddr_in server_address, struct sockaddr_in client_address, socklen_t address_size) { // worker to handle client request
 
@@ -209,7 +175,6 @@ void* handle_client(int server_socket, struct sockaddr_in server_address, struct
                 printf("Solicitacao de todos os perfis\n");
                 // return the entire data file
 
-
                 bzero(buffer, 10000);
                 char *json_str = cJSON_PrintUnformatted(data_json);
                 strcpy(buffer, json_str);
@@ -218,7 +183,6 @@ void* handle_client(int server_socket, struct sockaddr_in server_address, struct
             }
             else if (strcmp(action->valuestring, "getProfile") == 0){
                 printf("Solicitacao de busca de perfil\n");
-                // response in JSON format {"profiles": []}
 
                 char payload[10000];
                 strcpy(payload, "{\"profiles\":[");
@@ -242,7 +206,7 @@ void* handle_client(int server_socket, struct sockaddr_in server_address, struct
 
             }
             else if (strcmp(action->valuestring, "removeProfile") == 0){
-                /*falta apagar imagem*/
+
                 printf("Solicitacao de remocao de perfil\n");
                 bool profile_found = false;
 
@@ -273,6 +237,7 @@ void* handle_client(int server_socket, struct sockaddr_in server_address, struct
             else if(strcmp(action->valuestring, "seachImage") == 0){
                 printf("Solicitacao de imagem de perfil\n");
 
+                // First we verify if email exists in database
                 int existeId = 0;
 
                 for(int i = 0; i < num_profiles; i++){ 
@@ -283,6 +248,8 @@ void* handle_client(int server_socket, struct sockaddr_in server_address, struct
                         break;  
                     } 
                 }
+
+                // if email does not exist, we return an error message to client
                 if (existeId == 0){
                     bzero(buffer,10000);
                     strcpy(buffer, "Email não encontrado\n");
@@ -290,8 +257,8 @@ void* handle_client(int server_socket, struct sockaddr_in server_address, struct
                     break;
                 }
 
-
-                char* sourceImagePath = "./imagens-server/teste.jpg";
+                // open image that will be uploaded to client
+                char* sourceImagePath = "./imagens-server/standard-profile-image.jpg";
                 FILE* file = fopen(sourceImagePath, "rb");
                 if (file == NULL) {
                     printf("Falha ao abrir o arquivo de imagem: %s\n", sourceImagePath);
@@ -304,6 +271,8 @@ void* handle_client(int server_socket, struct sockaddr_in server_address, struct
                 size_t bytesRead;
                 int totalSent = 0;
                 bool sendImage = true;
+
+                // Start image streaming process and send accordingly to buffer size
                 while ((bytesRead = fread(buffer, 1, sizeof(buffer), file)) > 0) {
                     ssize_t sentBytes = sendto(server_socket, buffer, 10000, 0, (struct sockaddr*)&client_address, sizeof(client_address));  
                     if (sentBytes < 0) {
@@ -318,6 +287,8 @@ void* handle_client(int server_socket, struct sockaddr_in server_address, struct
                 }
                 fclose(file);
                 bzero(buffer, 10000);
+
+                // Send final message if image streaming is finished
                 if (sendImage == true){
                     strcpy(buffer, "finished");
                     sendto(server_socket, buffer, 10000, 0, (struct sockaddr*)&client_address, sizeof(client_address));

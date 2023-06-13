@@ -418,7 +418,7 @@ while(1){
 
             int bytesRead;
             int totalReceived = 0;
-            int imagemCriada = 0;
+            int createdImage = 0;
 
             FILE* file;
 
@@ -426,16 +426,11 @@ while(1){
                 bzero(buffer,10000);
                 ssize_t receivedBytes = recvfrom(client_socket, buffer, 10000, 0, (struct sockaddr*)&client_address, &client_address_size);
 
+                // Handle possible errors from server
                 if (strncmp(buffer, "Email não encontrado\n", sizeof("Email não encontrado\n")) == 0) {
                     printf("Email não encontrado\n");
                     break;
                 }
-
-                else if (strncmp(buffer, "finished", sizeof("finished")) == 0) {
-                    printf("Imagem recebida com sucesso!\nArquivo está localizado no seguinte caminho: %s\n", profileImagePath);
-                    break;
-                }
-
                 else if (receivedBytes < 0) {
                     printf("Falha ao receber dados da imagem\n");
                     break;
@@ -453,9 +448,15 @@ while(1){
                     printf("Erro no servidor: Erro ao gerar imagem de perfil\n");
                     break;
                 }
+                // Message sent from server to identify if image streaming was completed
+                else if (strncmp(buffer, "finished", sizeof("finished")) == 0) {
+                    printf("Imagem recebida com sucesso!\nArquivo está localizado no seguinte caminho: %s\n", profileImagePath);
+                    break;
+                }
                 else{
-                    if(imagemCriada == 0){
-                        imagemCriada = 1;
+                    // Create image only when image data is recived
+                    if(createdImage == 0){
+                        createdImage = 1;
                         file = fopen(profileImagePath, "wb");
                         if (file == NULL) {
                             printf("Falha ao criar o arquivo de imagem: %s\n", profileImagePath);
@@ -464,6 +465,7 @@ while(1){
                     }
                 }
 
+                // Write image data to file
                 size_t writtenBytes = fwrite(buffer, 1, receivedBytes, file);
                 if (writtenBytes < receivedBytes) {
                     printf("Falha ao escrever os dados no arquivo da imagem\n");
@@ -473,7 +475,8 @@ while(1){
                 totalReceived += receivedBytes;
             }
 
-            if(imagemCriada == 1)  fclose(file);
+            // if image was created then we close it
+            if(createdImage == 1)  fclose(file);
 
             break;
         }
